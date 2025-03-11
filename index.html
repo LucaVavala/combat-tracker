@@ -3,32 +3,71 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Combat Tracker</title>
+  <title>Feng Shui 2 Combat Tracker</title>
   <link rel="stylesheet" href="styles.css" />
   <link rel="manifest" href="manifest.json" />
 </head>
 <body>
   <header>
-    <h1>Combat Tracker</h1>
+    <h1>Feng Shui 2 Combat Tracker</h1>
   </header>
   <main>
-    <!-- Combatant Setup Section -->
-    <section id="combatant-setup">
-      <h2>Add Combatant</h2>
-      <form id="addCombatantForm">
-        <input type="text" id="combatantName" placeholder="Name" required />
-        <input type="number" id="hp" placeholder="Hit Points" required />
-        <!-- Optionally, you might let the GM enter initial condition -->
-        <input type="number" id="condition" placeholder="Condition (default 0)" value="0" />
-        <button type="submit">Add Combatant</button>
-      </form>
-    </section>
-
-    <!-- Combatant List Dashboard -->
-    <section id="combatant-dashboard">
-      <h2>Combatants</h2>
-      <ul id="combatantList"></ul>
-    </section>
+    <div class="columns">
+      <!-- Left Column: Players -->
+      <div class="column" id="playersColumn">
+        <h2>Players</h2>
+        <ul id="pcList"></ul>
+        <h3>Player Attack</h3>
+        <form id="playerActionForm">
+          <label for="playerAttacker">Attacking PC:</label>
+          <select id="playerAttacker" required></select>
+          <label for="npcTarget">Target NPC:</label>
+          <select id="npcTarget" required></select>
+          <input type="text" id="playerRollResult" placeholder="Roll Result (e.g., 18 or 18!)" required />
+          <input type="number" id="playerModifier" placeholder="Modifier (optional)" />
+          <input type="number" id="playerWeaponDamage" placeholder="Weapon Damage" required />
+          <button type="submit">Apply Player Attack</button>
+        </form>
+      </div>
+      <!-- Right Column: NPCs -->
+      <div class="column" id="npcsColumn">
+        <h2>NPCs</h2>
+        <form id="addEnemyForm">
+          <input type="text" id="enemyName" placeholder="Enemy Name" required />
+          <label for="enemyType">Enemy Type:</label>
+          <select id="enemyType" required>
+            <option value="mook">Mook</option>
+            <option value="featured">Featured Foe</option>
+            <option value="boss">Boss</option>
+            <option value="uberboss">Uber Boss</option>
+          </select>
+          <input type="number" id="enemyAttack" placeholder="Attack" required />
+          <input type="number" id="enemyDefense" placeholder="Defense" required />
+          <input type="number" id="enemyToughness" placeholder="Toughness" required />
+          <input type="number" id="enemySpeed" placeholder="Speed" required />
+          <!-- For Mooks, we track a count instead of Wound Points -->
+          <div id="mookCountContainer" style="display: none;">
+            <input type="number" id="mookCount" placeholder="Mook Count" value="1" required />
+          </div>
+          <button type="submit">Add Enemy</button>
+        </form>
+        <ul id="npcList"></ul>
+        <h3>NPC Attack</h3>
+        <form id="npcActionForm">
+          <label for="npcAttacker">Attacking NPC:</label>
+          <select id="npcAttacker" required></select>
+          <label for="playerTarget">Target PC:</label>
+          <select id="playerTarget" required></select>
+          <div id="npcRollPanel">
+            <button type="button" id="npcRollDiceButton">Roll Dice (NPC)</button>
+            <div id="npcRollResult"></div>
+            <input type="number" id="npcModifier" placeholder="Modifier (optional)" />
+          </div>
+          <input type="number" id="npcWeaponDamage" placeholder="Weapon Damage" required />
+          <button type="submit">Apply NPC Attack</button>
+        </form>
+      </div>
+    </div>
 
     <!-- Event Log -->
     <section id="eventLog">
@@ -36,13 +75,12 @@
       <ul id="logList"></ul>
     </section>
 
-    <!-- Data Export / Import -->
+    <!-- Data Management -->
     <section id="dataManagement">
       <button id="exportButton">Export Data</button>
       <input type="file" id="importFileInput" accept=".json" style="display: none;" />
       <button id="importButton">Import Data</button>
     </section>
-
   </main>
   <script src="script.js"></script>
 </body>
