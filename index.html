@@ -13,7 +13,7 @@
   </header>
   <main>
     <div class="columns">
-      <!-- Left Column: PCs -->
+      <!-- Left Column: Players -->
       <div class="column" id="playersColumn">
         <h2>Players</h2>
         <ul id="pcList"></ul>
@@ -42,18 +42,32 @@
             <option value="boss">Boss</option>
             <option value="uberboss">Uber Boss</option>
           </select>
-          <!-- This container appears only for Featured Foes -->
+          <!-- Mook Template Dropdown (appears when enemy type is mook) -->
+          <div id="mookTemplateContainer" style="display: none;">
+            <label for="mookTemplate">Mook Template:</label>
+            <select id="mookTemplate">
+              <option value="" disabled selected>Select Mook Template</option>
+              <option value="handToHand8">Hand to hand 8 Damage</option>
+              <option value="handToHand9">Hand to hand 9 Damage</option>
+              <option value="handToHand10">Hand to hand 10 Damage</option>
+              <option value="magic9">Magic 9 Damage</option>
+              <option value="ranged9">Ranged 9 Damage</option>
+              <option value="ranged10">Ranged 10 Damage</option>
+              <option value="ranged13">Ranged 13 Damage</option>
+              <option value="mixed10H2H7R">Mixed 10H2H 7R</option>
+              <option value="mixed9H2H10R">Mixed 9H2H 10R</option>
+              <option value="mixed10H2H8R">Mixed 10H2H 8R</option>
+            </select>
+          </div>
+          <!-- Featured Foe Template Dropdown (for featured, boss, uberboss) -->
           <div id="featuredTemplateContainer" style="display: none;">
             <label for="featuredTemplate">Featured Foe Template:</label>
             <select id="featuredTemplate">
-              <!-- Options are populated by script.js -->
+              <option value="" disabled selected>Select Template</option>
+              <!-- Options populated by script.js -->
             </select>
           </div>
-          <input type="number" id="enemyAttack" placeholder="Attack" required />
-          <input type="number" id="enemyDefense" placeholder="Defense" required />
-          <input type="number" id="enemyToughness" placeholder="Toughness" required />
-          <input type="number" id="enemySpeed" placeholder="Speed" required />
-          <!-- For Mooks, track a count -->
+          <!-- For Mooks, a count input -->
           <div id="mookCountContainer" style="display: none;">
             <input type="number" id="mookCount" placeholder="Mook Count" value="1" required />
           </div>
