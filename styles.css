@@ -109,3 +109,14 @@ ul {
   padding: 0.3em;
   border-bottom: 1px solid #eee;
 }
+
+.hitResult {
+  font-weight: bold;
+  color: green;
+}
+
+.missResult {
+  font-weight: bold;
+  color: red;
+}
+
