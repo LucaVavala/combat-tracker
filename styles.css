@@ -61,20 +61,20 @@ ul {
   margin: 0 0 0.3em;
 }
 
-.statContainer {
+.statRow {
   display: flex;
   align-items: center;
   margin: 0.3em 0;
 }
 
-.statContainer span {
-  margin-right: 0.5em;
+.statRow span {
+  flex: 1;
 }
 
-.statContainer button {
+.statRow button {
   font-size: 0.8em;
   padding: 0.2em 0.4em;
-  margin-right: 0.3em;
+  margin-left: 0.3em;
   cursor: pointer;
 }
 
@@ -110,6 +110,7 @@ ul {
   border-bottom: 1px solid #eee;
 }
 
+/* Styling for visual cues in NPC Dice Roll results */
 .hitResult {
   font-weight: bold;
   color: green;
@@ -120,3 +121,8 @@ ul {
   color: red;
 }
 
+#dataManagement button {
+  margin: 0.5em;
+  padding: 0.5em 1em;
+  cursor: pointer;
+}
