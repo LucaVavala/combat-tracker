@@ -42,11 +42,18 @@
             <option value="boss">Boss</option>
             <option value="uberboss">Uber Boss</option>
           </select>
+          <!-- This container appears only for Featured Foes -->
+          <div id="featuredTemplateContainer" style="display: none;">
+            <label for="featuredTemplate">Featured Foe Template:</label>
+            <select id="featuredTemplate">
+              <!-- Options are populated by script.js -->
+            </select>
+          </div>
           <input type="number" id="enemyAttack" placeholder="Attack" required />
           <input type="number" id="enemyDefense" placeholder="Defense" required />
           <input type="number" id="enemyToughness" placeholder="Toughness" required />
           <input type="number" id="enemySpeed" placeholder="Speed" required />
-          <!-- For Mooks, we track a count -->
+          <!-- For Mooks, track a count -->
           <div id="mookCountContainer" style="display: none;">
             <input type="number" id="mookCount" placeholder="Mook Count" value="1" required />
           </div>
