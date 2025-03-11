@@ -715,9 +715,6 @@ npcRollDiceButton.addEventListener('click', () => {
   
   // If attacker is a mook, add its templateDamage bonus.
   let baseAttack = attacker.attack;
-  if (attacker.type === "mook" && attacker.templateDamage) {
-    baseAttack += attacker.templateDamage;
-  }
   
   const finalCheck = baseAttack + diceOutcome + modifier;
   npcRollResultDiv.dataset.finalCheck = finalCheck;
