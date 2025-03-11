@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Combat Tracker</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="manifest" href="manifest.json" />
+</head>
+<body>
+  <header>
+    <h1>Combat Tracker</h1>
+  </header>
+  <main>
+    <!-- Combatant Setup Section -->
+    <section id="combatant-setup">
+      <h2>Add Combatant</h2>
+      <form id="addCombatantForm">
+        <input type="text" id="combatantName" placeholder="Name" required />
+        <input type="number" id="hp" placeholder="Hit Points" required />
+        <!-- Optionally, you might let the GM enter initial condition -->
+        <input type="number" id="condition" placeholder="Condition (default 0)" value="0" />
+        <button type="submit">Add Combatant</button>
+      </form>
+    </section>
+
+    <!-- Combatant List Dashboard -->
+    <section id="combatant-dashboard">
+      <h2>Combatants</h2>
+      <ul id="combatantList"></ul>
+    </section>
+
+    <!-- Event Log -->
+    <section id="eventLog">
+      <h2>Event Log</h2>
+      <ul id="logList"></ul>
+    </section>
+
+    <!-- Data Export / Import -->
+    <section id="dataManagement">
+      <button id="exportButton">Export Data</button>
+      <input type="file" id="importFileInput" accept=".json" style="display: none;" />
+      <button id="importButton">Import Data</button>
+    </section>
+
+  </main>
+  <script src="script.js"></script>
+</body>
+</html>
