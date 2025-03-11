@@ -13,7 +13,7 @@
   </header>
   <main>
     <div class="columns">
-      <!-- Left Column: Players -->
+      <!-- Left Column: PCs -->
       <div class="column" id="playersColumn">
         <h2>Players</h2>
         <ul id="pcList"></ul>
@@ -29,6 +29,7 @@
           <button type="submit">Apply Player Attack</button>
         </form>
       </div>
+
       <!-- Right Column: NPCs -->
       <div class="column" id="npcsColumn">
         <h2>NPCs</h2>
@@ -45,7 +46,7 @@
           <input type="number" id="enemyDefense" placeholder="Defense" required />
           <input type="number" id="enemyToughness" placeholder="Toughness" required />
           <input type="number" id="enemySpeed" placeholder="Speed" required />
-          <!-- For Mooks, we track a count instead of Wound Points -->
+          <!-- For Mooks, we track a count -->
           <div id="mookCountContainer" style="display: none;">
             <input type="number" id="mookCount" placeholder="Mook Count" value="1" required />
           </div>
