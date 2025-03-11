@@ -1,24 +1,17 @@
 /***********************************************************************
- * Combat Tracker for Feng Shui 2 with Featured Foe Templates
+ * Combat Tracker for Feng Shui 2 with Featured Foe and Mook Templates
  *
  * - Hard-coded PCs (players) are pre-loaded.
- * - NPC foes can be added via a form.
- *   • For Mooks, a count is tracked instead of wound points.
- *   • For Featured Foes, Bosses, and Uber Bosses, wound points start at 0.
- * - A new dropdown ("Featured Foe Template") appears when enemy type is "featured."
- *   If a template is selected, the enemy's stats (Attack, Defense, Toughness, Speed)
- *   are set to the template's values.
- * - Attack forms are split: players' attack (PC → NPC) and NPC attack (NPC → PC).
- * - Damage formulas:
- *     Smackdown = Final Check – Target's Defense (min 0)
- *     Damage = Smackdown + Weapon Damage – Target's Toughness (min 0)
- *     For Mooks, if damage > 0, reduce count by 1.
- * - NPC Attack (GM roll): Final Check = NPC's Attack + (Dice Outcome) + Modifier.
- *     Dice Outcome is calculated using two exploding d6 (one positive, one negative).
- *     A visual cue shows the final check in green (if ≥ target's Defense) or red (if lower).
- * - Each character card displays key stats (Attack, Defense, Toughness, Speed, Fortune, and Wound Points)
- *   with "+" and "–" buttons for adjustments.
- * - Data Export/Import functionality is provided.
+ * - NPC foes are added via a form.
+ *   • For Mooks, the form now shows a Mook Template dropdown.
+ *     Mooks always have: Attack = 8, Defense = 13, Toughness = 0, Speed = 5.
+ *     Their template selection sets a "templateDamage" bonus.
+ *   • For Featured Foes, Bosses, and Uber Bosses, the form shows a 
+ *     Featured Foe Template dropdown. For Bosses, add +3 Attack, +2 Defense, +2 Toughness, +1 Speed.
+ *     For Uber Bosses, add +5 Attack, +4 Defense, +3 Toughness, +2 Speed.
+ * - Manual stat inputs for Attack/Defense/Toughness/Speed have been removed.
+ * - The enemy form uses the appropriate template to auto-set stats.
+ * - Attack forms (Player Attack and NPC Attack) remain as before.
  ***********************************************************************/
 
 // Hard-coded PCs (players)
@@ -36,49 +29,63 @@ function getNextNpcId() {
   return npcIdCounter++;
 }
 
-// Predefined Featured Foe Templates (core stats only)
+// Predefined Featured Foe Templates
 const featuredTemplates = {
-  "enforcer": { attack: 13, defense: 13, toughness: 5, speed: 7, fortune: 0 },
-  "hitman": { attack: 15, defense: 12, toughness: 5, speed: 8, fortune: 0 },
-  "securityHoncho": { attack: 13, defense: 14, toughness: 5, speed: 6, fortune: 0 },
-  "sinisterBodyguard": { attack: 13, defense: 13, toughness: 5, speed: 6, fortune: 0 },
-  "badBusinessman": { attack: 13, defense: 13, toughness: 5, speed: 6, fortune: 0 },
-  "giangHuWarrior": { attack: 14, defense: 13, toughness: 5, speed: 7, fortune: 0 },
-  "martialArtist": { attack: 13, defense: 13, toughness: 6, speed: 7, fortune: 0 },
-  "officer": { attack: 13, defense: 13, toughness: 5, speed: 6, fortune: 0 },
-  "insurgent": { attack: 14, defense: 13, toughness: 5, speed: 8, fortune: 0 },
-  "wheelman": { attack: 13, defense: 13, toughness: 5, speed: 7, fortune: 0 },
-  "sorcerousVassal": { attack: 13, defense: 13, toughness: 5, speed: 7, fortune: 0 },
-  "tenThousandMan": { attack: 13, defense: 13, toughness: 6, speed: 6, fortune: 0 },
-  "cyberApe": { attack: 14, defense: 12, toughness: 7, speed: 7, fortune: 0 },
-  "monster": { attack: 14, defense: 13, toughness: 5, speed: 7, fortune: 0 },
-  "gladiator": { attack: 13, defense: 13, toughness: 6, speed: 8, fortune: 0 },
-  "mutant": { attack: 13, defense: 13, toughness: 6, speed: 7, fortune: 0 },
-  "wastelander": { attack: 13, defense: 13, toughness: 6, speed: 7, fortune: 0 },
-  "sinisterScientist": { attack: 14, defense: 13, toughness: 5, speed: 7, fortune: 0 },
-  "keyJiangshi": { attack: 15, defense: 13, toughness: 5, speed: 7, fortune: 0 },
-  "keySnakePerson": { attack: 14, defense: 12, toughness: 5, speed: 8, fortune: 0 },
-  "niceGuyBadAss": { attack: 16, defense: 17, toughness: 5, speed: 9, fortune: 0 }
+  "enforcer": { attack: 13, defense: 13, toughness: 5, speed: 7 },
+  "hitman": { attack: 15, defense: 12, toughness: 5, speed: 8 },
+  "securityHoncho": { attack: 13, defense: 14, toughness: 5, speed: 6 },
+  "sinisterBodyguard": { attack: 13, defense: 13, toughness: 5, speed: 6 },
+  "badBusinessman": { attack: 13, defense: 13, toughness: 5, speed: 6 },
+  "giangHuWarrior": { attack: 14, defense: 13, toughness: 5, speed: 7 },
+  "martialArtist": { attack: 13, defense: 13, toughness: 6, speed: 7 },
+  "officer": { attack: 13, defense: 13, toughness: 5, speed: 6 },
+  "insurgent": { attack: 14, defense: 13, toughness: 5, speed: 8 },
+  "wheelman": { attack: 13, defense: 13, toughness: 5, speed: 7 },
+  "sorcerousVassal": { attack: 13, defense: 13, toughness: 5, speed: 7 },
+  "tenThousandMan": { attack: 13, defense: 13, toughness: 6, speed: 6 },
+  "cyberApe": { attack: 14, defense: 12, toughness: 7, speed: 7 },
+  "monster": { attack: 14, defense: 13, toughness: 5, speed: 7 },
+  "gladiator": { attack: 13, defense: 13, toughness: 6, speed: 8 },
+  "mutant": { attack: 13, defense: 13, toughness: 6, speed: 7 },
+  "wastelander": { attack: 13, defense: 13, toughness: 6, speed: 7 },
+  "sinisterScientist": { attack: 14, defense: 13, toughness: 5, speed: 7 },
+  "keyJiangshi": { attack: 15, defense: 13, toughness: 5, speed: 7 },
+  "keySnakePerson": { attack: 14, defense: 12, toughness: 5, speed: 8 },
+  "niceGuyBadAss": { attack: 16, defense: 17, toughness: 5, speed: 9 }
+};
+
+// Predefined Mook Templates – they all have fixed stats (Attack 8, Defense 13, Toughness 0, Speed 5)
+// The template only supplies a damage bonus.
+const mookTemplates = {
+  "handToHand8": { templateDamage: 8 },
+  "handToHand9": { templateDamage: 9 },
+  "handToHand10": { templateDamage: 10 },
+  "magic9": { templateDamage: 9 },
+  "ranged9": { templateDamage: 9 },
+  "ranged10": { templateDamage: 10 },
+  "ranged13": { templateDamage: 13 },
+  "mixed10H2H7R": { templateDamage: 10 },
+  "mixed9H2H10R": { templateDamage: 9 },
+  "mixed10H2H8R": { templateDamage: 10 }
 };
 
 // ------------------- DOM Elements -------------------
 
 // PC display
 const pcList = document.getElementById('pcList');
-// NPC display and enemy addition form
+// NPC display and enemy form
 const npcList = document.getElementById('npcList');
 
 const addEnemyForm = document.getElementById('addEnemyForm');
 const enemyNameInput = document.getElementById('enemyName');
 const enemyTypeSelect = document.getElementById('enemyType');
-const enemyAttackInput = document.getElementById('enemyAttack');
-const enemyDefenseInput = document.getElementById('enemyDefense');
-const enemyToughnessInput = document.getElementById('enemyToughness');
-const enemySpeedInput = document.getElementById('enemySpeed');
+// (No manual stat inputs now for non-Mooks)
 const mookCountContainer = document.getElementById('mookCountContainer');
 const mookCountInput = document.getElementById('mookCount');
 
-// New: Featured Foe Template dropdown
+// New dropdowns for templates
+const mookTemplateContainer = document.getElementById('mookTemplateContainer');
+const mookTemplateSelect = document.getElementById('mookTemplate');
 const featuredTemplateContainer = document.getElementById('featuredTemplateContainer');
 const featuredTemplateSelect = document.getElementById('featuredTemplate');
 
@@ -113,7 +120,7 @@ const importFileInput = document.getElementById('importFileInput');
 
 // ------------------- Utility Functions -------------------
 
-// Render a stat row with label, current value, and +/- buttons.
+// Render a stat row with label, value, and +/- buttons.
 function renderStatRow(label, statValue, id, statKey) {
   return `
     <div class="statRow">
@@ -131,7 +138,6 @@ function populateFeaturedTemplateDropdown() {
     if (featuredTemplates.hasOwnProperty(key)) {
       const option = document.createElement('option');
       option.value = key;
-      // Format key to a more friendly label.
       let label = key.replace(/([A-Z])/g, ' $1').trim();
       label = label.charAt(0).toUpperCase() + label.slice(1);
       option.textContent = label;
@@ -140,6 +146,22 @@ function populateFeaturedTemplateDropdown() {
   }
 }
 populateFeaturedTemplateDropdown();
+
+// Populate the Mook Template dropdown.
+function populateMookTemplateDropdown() {
+  mookTemplateSelect.innerHTML = '<option value="" disabled selected>Select Mook Template</option>';
+  for (const key in mookTemplates) {
+    if (mookTemplates.hasOwnProperty(key)) {
+      const option = document.createElement('option');
+      option.value = key;
+      let label = key.replace(/([A-Z])/g, ' $1').trim();
+      label = label.charAt(0).toUpperCase() + label.slice(1);
+      option.textContent = label;
+      mookTemplateSelect.appendChild(option);
+    }
+  }
+}
+populateMookTemplateDropdown();
 
 // ------------------- Update Display Functions -------------------
 
@@ -346,6 +368,7 @@ function attachPcListeners() {
 }
 
 function attachNpcListeners() {
+  // Attack
   document.querySelectorAll('.incAttack').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = parseInt(btn.dataset.id, 10);
@@ -376,7 +399,7 @@ function attachNpcListeners() {
     });
   });
   // Toughness
- 	document.querySelectorAll('.incToughness').forEach(btn => {
+  document.querySelectorAll('.incToughness').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = parseInt(btn.dataset.id, 10);
       const npc = npcs.find(npc => npc.id === id);
@@ -435,7 +458,7 @@ function attachNpcListeners() {
       if (npc && npc.type !== "mook") { npc.woundPoints--; if(npc.woundPoints < 0) npc.woundPoints = 0; updateNpcList(); logEvent(`Decreased ${npc.name}'s Wound Points to ${npc.woundPoints}`); }
     });
   });
-  // For mooks, adjust count.
+  // Mook Count adjustments
   document.querySelectorAll('.incMook').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = parseInt(btn.dataset.id, 10);
@@ -510,28 +533,67 @@ addEnemyForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const name = enemyNameInput.value.trim();
   let type = enemyTypeSelect.value;
-  let attack = parseInt(enemyAttackInput.value, 10) || 0;
-  let defense = parseInt(enemyDefenseInput.value, 10) || 0;
-  let toughness = parseInt(enemyToughnessInput.value, 10) || 0;
-  let speed = parseInt(enemySpeedInput.value, 10) || 0;
-  
-  // If enemy type is "featured" and a template is selected, override stats.
-  if(type === "featured" && featuredTemplateSelect.value) {
-    const template = featuredTemplates[featuredTemplateSelect.value];
-    attack = template.attack;
-    defense = template.defense;
-    toughness = template.toughness;
-    speed = template.speed;
-  }
-  
-  let enemy = { id: getNextNpcId(), name, type, attack, defense, toughness, speed };
+  let enemy;
   
   if (type === "mook") {
+    // Use Mook Template.
+    const templateKey = mookTemplateSelect.value;
+    if (!templateKey) {
+      alert("Please select a Mook Template.");
+      return;
+    }
+    const template = mookTemplates[templateKey];
+    enemy = {
+      id: getNextNpcId(),
+      name,
+      type,
+      attack: 8,
+      defense: 13,
+      toughness: 0,
+      speed: 5,
+      fortune: 0,
+      templateDamage: template.templateDamage
+    };
     enemy.count = parseInt(mookCountInput.value, 10) || 1;
+  } else if (type === "featured" || type === "boss" || type === "uberboss") {
+    const templateKey = featuredTemplateSelect.value;
+    if (!templateKey) {
+      alert("Please select a Featured Foe Template.");
+      return;
+    }
+    const template = featuredTemplates[templateKey];
+    let baseAttack = template.attack;
+    let baseDefense = template.defense;
+    let baseToughness = template.toughness;
+    let baseSpeed = template.speed;
+    // For Bosses and Uber Bosses, apply modifiers:
+    if (type === "boss") {
+      baseAttack += 3;
+      baseDefense += 2;
+      baseToughness += 2;
+      baseSpeed += 1;
+    } else if (type === "uberboss") {
+      baseAttack += 5;
+      baseDefense += 4;
+      baseToughness += 3;
+      baseSpeed += 2;
+    }
+    enemy = {
+      id: getNextNpcId(),
+      name,
+      type,
+      attack: baseAttack,
+      defense: baseDefense,
+      toughness: baseToughness,
+      speed: baseSpeed,
+      fortune: 0,
+      woundPoints: 0,
+      attackImpair: 0,
+      defenseImpair: 0
+    };
   } else {
-    enemy.woundPoints = 0;
-    enemy.attackImpair = 0;
-    enemy.defenseImpair = 0;
+    // (For any other type, not expected.)
+    return;
   }
   
   npcs.push(enemy);
@@ -539,6 +601,7 @@ addEnemyForm.addEventListener('submit', (e) => {
   updateNpcList();
   addEnemyForm.reset();
   mookCountContainer.style.display = "none";
+  mookTemplateContainer.style.display = "none";
   featuredTemplateContainer.style.display = "none";
   logEvent(`Added enemy: ${name} (${type})`);
 });
@@ -546,14 +609,17 @@ addEnemyForm.addEventListener('submit', (e) => {
 // Show/hide additional fields based on enemy type.
 enemyTypeSelect.addEventListener('change', (e) => {
   const selected = e.target.value;
-  if(selected === "mook") {
+  if (selected === "mook") {
     mookCountContainer.style.display = "block";
+    mookTemplateContainer.style.display = "block";
     featuredTemplateContainer.style.display = "none";
-  } else if(selected === "featured") {
+  } else if (selected === "featured" || selected === "boss" || selected === "uberboss") {
     featuredTemplateContainer.style.display = "block";
     mookCountContainer.style.display = "none";
+    mookTemplateContainer.style.display = "none";
   } else {
     mookCountContainer.style.display = "none";
+    mookTemplateContainer.style.display = "none";
     featuredTemplateContainer.style.display = "none";
   }
 });
@@ -567,39 +633,39 @@ playerActionForm.addEventListener('submit', (e) => {
   const targetId = parseInt(npcTargetSelect.value, 10);
   const attacker = pcs.find(pc => pc.id === attackerId);
   const target = npcs.find(npc => npc.id === targetId);
-  if(!attacker || !target) return;
+  if (!attacker || !target) return;
   
   let rollResult = parseInt(playerRollResultInput.value.replace('!', ''), 10);
   const modifier = parseInt(playerModifierInput.value, 10) || 0;
   rollResult += modifier;
   
   let smackdown = rollResult - target.defense;
-  if(smackdown < 0) smackdown = 0;
+  if (smackdown < 0) smackdown = 0;
   
   const weaponDamage = parseInt(playerWeaponDamageInput.value, 10) || 0;
   let damage = smackdown + weaponDamage - target.toughness;
-  if(damage < 0) damage = 0;
+  if (damage < 0) damage = 0;
   
   let logMsg = `Player Attack: ${attacker.name} rolled ${rollResult} vs. ${target.name}'s Defense (${target.defense}) = ${smackdown}. `;
   logMsg += `+ Weapon Damage (${weaponDamage}) - Toughness (${target.toughness}) = Damage ${damage}. `;
   
-  if(target.type === "mook") {
-    if(damage > 0) {
+  if (target.type === "mook") {
+    if (damage > 0) {
       target.count--;
-      if(target.count < 0) target.count = 0;
+      if (target.count < 0) target.count = 0;
       logMsg += `Mook hit! ${target.name} count decreased to ${target.count}.`;
     } else {
       logMsg += `No damage; mook count remains ${target.count}.`;
     }
   } else {
     target.woundPoints += damage;
-    // Apply impairment thresholds for Featured foes.
-    if(target.type === "featured") {
-      if(target.woundPoints >= 30) {
+    // Apply impairment thresholds.
+    if (target.type === "featured") {
+      if (target.woundPoints >= 30) {
         target.attackImpair = 2;
         target.defenseImpair = 2;
         logMsg += `Impairment -2 applied. `;
-      } else if(target.woundPoints >= 25) {
+      } else if (target.woundPoints >= 25) {
         target.attackImpair = 1;
         target.defenseImpair = 1;
         logMsg += `Impairment -1 applied. `;
@@ -607,12 +673,12 @@ playerActionForm.addEventListener('submit', (e) => {
         target.attackImpair = 0;
         target.defenseImpair = 0;
       }
-    } else if(target.type === "boss" || target.type === "uberboss") {
-      if(target.woundPoints >= 45) {
+    } else if (target.type === "boss" || target.type === "uberboss") {
+      if (target.woundPoints >= 45) {
         target.attackImpair = 2;
         target.defenseImpair = 2;
         logMsg += `Impairment -2 applied. `;
-      } else if(target.woundPoints >= 40) {
+      } else if (target.woundPoints >= 40) {
         target.attackImpair = 1;
         target.defenseImpair = 1;
         logMsg += `Impairment -1 applied. `;
@@ -634,7 +700,7 @@ playerActionForm.addEventListener('submit', (e) => {
 npcRollDiceButton.addEventListener('click', () => {
   const attackerId = parseInt(npcAttackerSelect.value, 10);
   const attacker = npcs.find(npc => npc.id === attackerId);
-  if(!attacker) {
+  if (!attacker) {
     alert("No attacking NPC selected!");
     return;
   }
@@ -647,15 +713,21 @@ npcRollDiceButton.addEventListener('click', () => {
   const negTotal = rollExplodingDie(negInitial);
   const diceOutcome = posTotal - negTotal;
   
-  const finalCheck = attacker.attack + diceOutcome + modifier;
+  // If attacker is a mook, add its templateDamage bonus.
+  let baseAttack = attacker.attack;
+  if (attacker.type === "mook" && attacker.templateDamage) {
+    baseAttack += attacker.templateDamage;
+  }
+  
+  const finalCheck = baseAttack + diceOutcome + modifier;
   npcRollResultDiv.dataset.finalCheck = finalCheck;
   
   // Visual cue: compare finalCheck to target PC's Defense.
   const targetId = parseInt(playerTargetSelect.value, 10);
   const target = pcs.find(pc => pc.id === targetId);
   let finalCheckHTML = `<span>${finalCheck}</span>`;
-  if(target) {
-    if(finalCheck >= target.defense) {
+  if (target) {
+    if (finalCheck >= target.defense) {
       finalCheckHTML = `<span class="hitResult">${finalCheck}</span>`;
     } else {
       finalCheckHTML = `<span class="missResult">${finalCheck}</span>`;
@@ -663,10 +735,10 @@ npcRollDiceButton.addEventListener('click', () => {
   }
   
   let resultText = `Positive Total: ${posTotal} (init: ${posInitial}), Negative Total: ${negTotal} (init: ${negInitial}) → Outcome: ${diceOutcome}. `;
-  resultText += `Final Check = ${attacker.attack} + ${diceOutcome} + Modifier (${modifier}) = ${finalCheckHTML}`;
-  if(boxcars) resultText += " (Boxcars!)";
+  resultText += `Final Check = ${baseAttack} + ${diceOutcome} + Modifier (${modifier}) = ${finalCheckHTML}`;
+  if (boxcars) resultText += " (Boxcars!)";
   npcRollResultDiv.innerHTML = resultText;
-  logEvent(`NPC Dice Roll: +die=${posTotal} (init ${posInitial}), -die=${negTotal} (init ${negInitial}), Outcome=${diceOutcome}. Final Check = ${attacker.attack} + ${diceOutcome} + ${modifier} = ${finalCheck}${boxcars?" (Boxcars!)":""}`);
+  logEvent(`NPC Dice Roll: +die=${posTotal} (init ${posInitial}), -die=${negTotal} (init ${negInitial}), Outcome=${diceOutcome}. Final Check = ${baseAttack} + ${diceOutcome} + ${modifier} = ${finalCheck}${boxcars?" (Boxcars!)":""}`);
 });
 
 npcActionForm.addEventListener('submit', (e) => {
@@ -675,20 +747,20 @@ npcActionForm.addEventListener('submit', (e) => {
   const targetId = parseInt(playerTargetSelect.value, 10);
   const attacker = npcs.find(npc => npc.id === attackerId);
   const target = pcs.find(pc => pc.id === targetId);
-  if(!attacker || !target) return;
+  if (!attacker || !target) return;
   
   let finalCheck = parseInt(npcRollResultDiv.dataset.finalCheck || "0", 10);
-  if(isNaN(finalCheck) || finalCheck === 0) {
+  if (isNaN(finalCheck) || finalCheck === 0) {
     alert("Please roll the dice for NPC attack first.");
     return;
   }
   
   let smackdown = finalCheck - target.defense;
-  if(smackdown < 0) smackdown = 0;
+  if (smackdown < 0) smackdown = 0;
   
   const weaponDamage = parseInt(npcWeaponDamageInput.value, 10) || 0;
   let damage = smackdown + weaponDamage - target.toughness;
-  if(damage < 0) damage = 0;
+  if (damage < 0) damage = 0;
   
   let logMsg = `NPC Attack: ${attacker.name} (Final Check ${finalCheck}) vs. ${target.name}'s Defense (${target.defense}) = ${smackdown}. `;
   logMsg += `+ Weapon Damage (${weaponDamage}) - Toughness (${target.toughness}) = Damage ${damage}. `;
