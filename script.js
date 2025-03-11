@@ -1,29 +1,23 @@
 /***********************************************************************
- * Combat Tracker for Feng Shui 2
+ * Combat Tracker for Feng Shui 2 with Featured Foe Templates
  *
- * - Hard-coded PCs are pre-loaded. Each PC has the following stats:
- *     Attack, (optionally Backup Attack), Defense, Toughness, Speed, Fortune,
- *     and Wound Points (which always start at 0).
- *
+ * - Hard-coded PCs (players) are pre-loaded.
  * - NPC foes can be added via a form.
- *   For Mooks, we track a count (instead of Wound Points).
- *   Featured Foes, Bosses, and Uber Bosses have Wound Points.
- *
- * - There are separate attack forms for PCs (Player Attack) and NPCs (NPC Attack).
- *   The formulas for damage are:
- *     Smackdown = Final Check – Target's Defense (if negative, 0)
- *     Damage = Smackdown + Weapon Damage – Target's Toughness (if negative, 0)
- *   For Mooks, if Damage > 0, the mook count is decreased by 1.
- *
+ *   • For Mooks, a count is tracked instead of wound points.
+ *   • For Featured Foes, Bosses, and Uber Bosses, wound points start at 0.
+ * - A new dropdown ("Featured Foe Template") appears when enemy type is "featured."
+ *   If a template is selected, the enemy's stats (Attack, Defense, Toughness, Speed)
+ *   are set to the template's values.
+ * - Attack forms are split: players' attack (PC → NPC) and NPC attack (NPC → PC).
+ * - Damage formulas:
+ *     Smackdown = Final Check – Target's Defense (min 0)
+ *     Damage = Smackdown + Weapon Damage – Target's Toughness (min 0)
+ *     For Mooks, if damage > 0, reduce count by 1.
  * - NPC Attack (GM roll): Final Check = NPC's Attack + (Dice Outcome) + Modifier.
- *   Dice Outcome is calculated by rolling two exploding d6 (one positive, one negative).
- *   A visual cue displays the final check number in bold green if it’s ≥ target’s Defense,
- *   or bold red if it’s lower.
- *
- * - Each character card (for PCs and NPCs) shows every key stat with "+" and "–" buttons,
- *   letting you adjust stats such as Attack, Defense, Toughness, Speed, Fortune, and Wound Points.
- *   (For PCs, if a Backup Attack stat exists, that row is also displayed and adjustable.)
- *
+ *     Dice Outcome is calculated using two exploding d6 (one positive, one negative).
+ *     A visual cue shows the final check in green (if ≥ target's Defense) or red (if lower).
+ * - Each character card displays key stats (Attack, Defense, Toughness, Speed, Fortune, and Wound Points)
+ *   with "+" and "–" buttons for adjustments.
  * - Data Export/Import functionality is provided.
  ***********************************************************************/
 
@@ -35,21 +29,45 @@ const pcs = [
   { id: 103, name: "Shen Dao", attack: 14, defense: 13, toughness: 6, speed: 7, fortune: 8, woundPoints: 0, isPC: true }
 ];
 
-// Array for NPC foes (enemies added via the enemy form)
+// Array for NPC foes
 let npcs = [];
 let npcIdCounter = 200;
 function getNextNpcId() {
   return npcIdCounter++;
 }
 
+// Predefined Featured Foe Templates (core stats only)
+const featuredTemplates = {
+  "enforcer": { attack: 13, defense: 13, toughness: 5, speed: 7, fortune: 0 },
+  "hitman": { attack: 15, defense: 12, toughness: 5, speed: 8, fortune: 0 },
+  "securityHoncho": { attack: 13, defense: 14, toughness: 5, speed: 6, fortune: 0 },
+  "sinisterBodyguard": { attack: 13, defense: 13, toughness: 5, speed: 6, fortune: 0 },
+  "badBusinessman": { attack: 13, defense: 13, toughness: 5, speed: 6, fortune: 0 },
+  "giangHuWarrior": { attack: 14, defense: 13, toughness: 5, speed: 7, fortune: 0 },
+  "martialArtist": { attack: 13, defense: 13, toughness: 6, speed: 7, fortune: 0 },
+  "officer": { attack: 13, defense: 13, toughness: 5, speed: 6, fortune: 0 },
+  "insurgent": { attack: 14, defense: 13, toughness: 5, speed: 8, fortune: 0 },
+  "wheelman": { attack: 13, defense: 13, toughness: 5, speed: 7, fortune: 0 },
+  "sorcerousVassal": { attack: 13, defense: 13, toughness: 5, speed: 7, fortune: 0 },
+  "tenThousandMan": { attack: 13, defense: 13, toughness: 6, speed: 6, fortune: 0 },
+  "cyberApe": { attack: 14, defense: 12, toughness: 7, speed: 7, fortune: 0 },
+  "monster": { attack: 14, defense: 13, toughness: 5, speed: 7, fortune: 0 },
+  "gladiator": { attack: 13, defense: 13, toughness: 6, speed: 8, fortune: 0 },
+  "mutant": { attack: 13, defense: 13, toughness: 6, speed: 7, fortune: 0 },
+  "wastelander": { attack: 13, defense: 13, toughness: 6, speed: 7, fortune: 0 },
+  "sinisterScientist": { attack: 14, defense: 13, toughness: 5, speed: 7, fortune: 0 },
+  "keyJiangshi": { attack: 15, defense: 13, toughness: 5, speed: 7, fortune: 0 },
+  "keySnakePerson": { attack: 14, defense: 12, toughness: 5, speed: 8, fortune: 0 },
+  "niceGuyBadAss": { attack: 16, defense: 17, toughness: 5, speed: 9, fortune: 0 }
+};
+
 // ------------------- DOM Elements -------------------
 
 // PC display
 const pcList = document.getElementById('pcList');
-// NPC display and enemy addition
+// NPC display and enemy addition form
 const npcList = document.getElementById('npcList');
 
-// Enemy form elements
 const addEnemyForm = document.getElementById('addEnemyForm');
 const enemyNameInput = document.getElementById('enemyName');
 const enemyTypeSelect = document.getElementById('enemyType');
@@ -60,11 +78,13 @@ const enemySpeedInput = document.getElementById('enemySpeed');
 const mookCountContainer = document.getElementById('mookCountContainer');
 const mookCountInput = document.getElementById('mookCount');
 
+// New: Featured Foe Template dropdown
+const featuredTemplateContainer = document.getElementById('featuredTemplateContainer');
+const featuredTemplateSelect = document.getElementById('featuredTemplate');
+
 // Attack form dropdowns
-// For Player Attack: PC (attacker) → NPC (target)
 const playerAttackerSelect = document.getElementById('playerAttacker');
 const npcTargetSelect = document.getElementById('npcTarget');
-// For NPC Attack: NPC (attacker) → PC (target)
 const npcAttackerSelect = document.getElementById('npcAttacker');
 const playerTargetSelect = document.getElementById('playerTarget');
 
@@ -94,7 +114,6 @@ const importFileInput = document.getElementById('importFileInput');
 // ------------------- Utility Functions -------------------
 
 // Render a stat row with label, current value, and +/- buttons.
-// 'statKey' is a unique identifier (like "Attack", "Defense", etc.).
 function renderStatRow(label, statValue, id, statKey) {
   return `
     <div class="statRow">
@@ -105,9 +124,26 @@ function renderStatRow(label, statValue, id, statKey) {
   `;
 }
 
+// Populate the Featured Foe Template dropdown.
+function populateFeaturedTemplateDropdown() {
+  featuredTemplateSelect.innerHTML = '<option value="" disabled selected>Select Template</option>';
+  for (const key in featuredTemplates) {
+    if (featuredTemplates.hasOwnProperty(key)) {
+      const option = document.createElement('option');
+      option.value = key;
+      // Format key to a more friendly label.
+      let label = key.replace(/([A-Z])/g, ' $1').trim();
+      label = label.charAt(0).toUpperCase() + label.slice(1);
+      option.textContent = label;
+      featuredTemplateSelect.appendChild(option);
+    }
+  }
+}
+populateFeaturedTemplateDropdown();
+
 // ------------------- Update Display Functions -------------------
 
-// Update PC List (Players)
+// Update PC List
 function updatePcList() {
   pcList.innerHTML = '';
   pcs.forEach(pc => {
@@ -121,7 +157,6 @@ function updatePcList() {
     cardHTML += renderStatRow("Speed", pc.speed, pc.id, "Speed");
     cardHTML += renderStatRow("Fortune", pc.fortune, pc.id, "Fortune");
     cardHTML += renderStatRow("Wound Points", pc.woundPoints, pc.id, "Wound");
-    // PCs are not removable.
     const li = document.createElement('li');
     li.className = "combatantCard";
     li.innerHTML = cardHTML;
@@ -130,7 +165,7 @@ function updatePcList() {
   attachPcListeners();
 }
 
-// Update NPC List (Enemies)
+// Update NPC List
 function updateNpcList() {
   npcList.innerHTML = '';
   npcs.forEach(npc => {
@@ -167,7 +202,6 @@ function updateNpcList() {
 
 // Update dropdowns for attack forms
 function updateAttackDropdowns() {
-  // For Player Attack: Attacker = PC, Target = NPC (only if mook count > 0 or woundPoints exist)
   playerAttackerSelect.innerHTML = '';
   pcs.forEach(pc => {
     const option = document.createElement('option');
@@ -184,8 +218,6 @@ function updateAttackDropdowns() {
       npcTargetSelect.appendChild(option);
     }
   });
-  
-  // For NPC Attack: Attacker = NPC, Target = PC
   npcAttackerSelect.innerHTML = '';
   npcs.forEach(npc => {
     if(npc.type !== "mook" || npc.count > 0) {
@@ -205,55 +237,35 @@ function updateAttackDropdowns() {
 }
 
 // ------------------- Attach Listeners for Stat Adjustment Buttons -------------------
-
-// Attach listeners for PC stat adjustments.
 function attachPcListeners() {
   // Attack
   document.querySelectorAll('.incAttack').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = parseInt(btn.dataset.id, 10);
       const pc = pcs.find(pc => pc.id === id);
-      if (pc) {
-        pc.attack++;
-        updatePcList();
-        logEvent(`Increased ${pc.name}'s Attack to ${pc.attack}`);
-      }
+      if (pc) { pc.attack++; updatePcList(); logEvent(`Increased ${pc.name}'s Attack to ${pc.attack}`); }
     });
   });
   document.querySelectorAll('.decAttack').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = parseInt(btn.dataset.id, 10);
       const pc = pcs.find(pc => pc.id === id);
-      if (pc) {
-        pc.attack--;
-        if(pc.attack < 0) pc.attack = 0;
-        updatePcList();
-        logEvent(`Decreased ${pc.name}'s Attack to ${pc.attack}`);
-      }
+      if (pc) { pc.attack--; if(pc.attack < 0) pc.attack = 0; updatePcList(); logEvent(`Decreased ${pc.name}'s Attack to ${pc.attack}`); }
     });
   });
-  // Backup Attack (if present)
+  // Backup Attack
   document.querySelectorAll('.incBackupAttack').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = parseInt(btn.dataset.id, 10);
       const pc = pcs.find(pc => pc.id === id);
-      if (pc && pc.backupAttack !== undefined) {
-        pc.backupAttack++;
-        updatePcList();
-        logEvent(`Increased ${pc.name}'s Backup Attack to ${pc.backupAttack}`);
-      }
+      if (pc && pc.backupAttack !== undefined) { pc.backupAttack++; updatePcList(); logEvent(`Increased ${pc.name}'s Backup Attack to ${pc.backupAttack}`); }
     });
   });
   document.querySelectorAll('.decBackupAttack').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = parseInt(btn.dataset.id, 10);
       const pc = pcs.find(pc => pc.id === id);
-      if (pc && pc.backupAttack !== undefined) {
-        pc.backupAttack--;
-        if(pc.backupAttack < 0) pc.backupAttack = 0;
-        updatePcList();
-        logEvent(`Decreased ${pc.name}'s Backup Attack to ${pc.backupAttack}`);
-      }
+      if (pc && pc.backupAttack !== undefined) { pc.backupAttack--; if(pc.backupAttack < 0) pc.backupAttack = 0; updatePcList(); logEvent(`Decreased ${pc.name}'s Backup Attack to ${pc.backupAttack}`); }
     });
   });
   // Defense
@@ -261,23 +273,14 @@ function attachPcListeners() {
     btn.addEventListener('click', () => {
       const id = parseInt(btn.dataset.id, 10);
       const pc = pcs.find(pc => pc.id === id);
-      if (pc) {
-        pc.defense++;
-        updatePcList();
-        logEvent(`Increased ${pc.name}'s Defense to ${pc.defense}`);
-      }
+      if (pc) { pc.defense++; updatePcList(); logEvent(`Increased ${pc.name}'s Defense to ${pc.defense}`); }
     });
   });
   document.querySelectorAll('.decDefense').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = parseInt(btn.dataset.id, 10);
       const pc = pcs.find(pc => pc.id === id);
-      if (pc) {
-        pc.defense--;
-        if(pc.defense < 0) pc.defense = 0;
-        updatePcList();
-        logEvent(`Decreased ${pc.name}'s Defense to ${pc.defense}`);
-      }
+      if (pc) { pc.defense--; if(pc.defense < 0) pc.defense = 0; updatePcList(); logEvent(`Decreased ${pc.name}'s Defense to ${pc.defense}`); }
     });
   });
   // Toughness
@@ -285,23 +288,14 @@ function attachPcListeners() {
     btn.addEventListener('click', () => {
       const id = parseInt(btn.dataset.id, 10);
       const pc = pcs.find(pc => pc.id === id);
-      if (pc) {
-        pc.toughness++;
-        updatePcList();
-        logEvent(`Increased ${pc.name}'s Toughness to ${pc.toughness}`);
-      }
+      if (pc) { pc.toughness++; updatePcList(); logEvent(`Increased ${pc.name}'s Toughness to ${pc.toughness}`); }
     });
   });
   document.querySelectorAll('.decToughness').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = parseInt(btn.dataset.id, 10);
       const pc = pcs.find(pc => pc.id === id);
-      if (pc) {
-        pc.toughness--;
-        if(pc.toughness < 0) pc.toughness = 0;
-        updatePcList();
-        logEvent(`Decreased ${pc.name}'s Toughness to ${pc.toughness}`);
-      }
+      if (pc) { pc.toughness--; if(pc.toughness < 0) pc.toughness = 0; updatePcList(); logEvent(`Decreased ${pc.name}'s Toughness to ${pc.toughness}`); }
     });
   });
   // Speed
@@ -309,23 +303,14 @@ function attachPcListeners() {
     btn.addEventListener('click', () => {
       const id = parseInt(btn.dataset.id, 10);
       const pc = pcs.find(pc => pc.id === id);
-      if (pc) {
-        pc.speed++;
-        updatePcList();
-        logEvent(`Increased ${pc.name}'s Speed to ${pc.speed}`);
-      }
+      if (pc) { pc.speed++; updatePcList(); logEvent(`Increased ${pc.name}'s Speed to ${pc.speed}`); }
     });
   });
   document.querySelectorAll('.decSpeed').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = parseInt(btn.dataset.id, 10);
       const pc = pcs.find(pc => pc.id === id);
-      if (pc) {
-        pc.speed--;
-        if(pc.speed < 0) pc.speed = 0;
-        updatePcList();
-        logEvent(`Decreased ${pc.name}'s Speed to ${pc.speed}`);
-      }
+      if (pc) { pc.speed--; if(pc.speed < 0) pc.speed = 0; updatePcList(); logEvent(`Decreased ${pc.name}'s Speed to ${pc.speed}`); }
     });
   });
   // Fortune
@@ -333,23 +318,14 @@ function attachPcListeners() {
     btn.addEventListener('click', () => {
       const id = parseInt(btn.dataset.id, 10);
       const pc = pcs.find(pc => pc.id === id);
-      if (pc) {
-        pc.fortune++;
-        updatePcList();
-        logEvent(`Increased ${pc.name}'s Fortune to ${pc.fortune}`);
-      }
+      if (pc) { pc.fortune++; updatePcList(); logEvent(`Increased ${pc.name}'s Fortune to ${pc.fortune}`); }
     });
   });
   document.querySelectorAll('.decFortune').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = parseInt(btn.dataset.id, 10);
       const pc = pcs.find(pc => pc.id === id);
-      if (pc) {
-        pc.fortune--;
-        if(pc.fortune < 0) pc.fortune = 0;
-        updatePcList();
-        logEvent(`Decreased ${pc.name}'s Fortune to ${pc.fortune}`);
-      }
+      if (pc) { pc.fortune--; if(pc.fortune < 0) pc.fortune = 0; updatePcList(); logEvent(`Decreased ${pc.name}'s Fortune to ${pc.fortune}`); }
     });
   });
   // Wound Points
@@ -357,50 +333,31 @@ function attachPcListeners() {
     btn.addEventListener('click', () => {
       const id = parseInt(btn.dataset.id, 10);
       const pc = pcs.find(pc => pc.id === id);
-      if (pc) {
-        pc.woundPoints++;
-        updatePcList();
-        logEvent(`Increased ${pc.name}'s Wound Points to ${pc.woundPoints}`);
-      }
+      if (pc) { pc.woundPoints++; updatePcList(); logEvent(`Increased ${pc.name}'s Wound Points to ${pc.woundPoints}`); }
     });
   });
   document.querySelectorAll('.decWound').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = parseInt(btn.dataset.id, 10);
       const pc = pcs.find(pc => pc.id === id);
-      if (pc) {
-        pc.woundPoints--;
-        if(pc.woundPoints < 0) pc.woundPoints = 0;
-        updatePcList();
-        logEvent(`Decreased ${pc.name}'s Wound Points to ${pc.woundPoints}`);
-      }
+      if (pc) { pc.woundPoints--; if(pc.woundPoints < 0) pc.woundPoints = 0; updatePcList(); logEvent(`Decreased ${pc.name}'s Wound Points to ${pc.woundPoints}`); }
     });
   });
 }
 
-// Attach listeners for NPC stat adjustments.
 function attachNpcListeners() {
   document.querySelectorAll('.incAttack').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = parseInt(btn.dataset.id, 10);
       const npc = npcs.find(npc => npc.id === id);
-      if (npc) {
-        npc.attack++;
-        updateNpcList();
-        logEvent(`Increased ${npc.name}'s Attack to ${npc.attack}`);
-      }
+      if (npc) { npc.attack++; updateNpcList(); logEvent(`Increased ${npc.name}'s Attack to ${npc.attack}`); }
     });
   });
   document.querySelectorAll('.decAttack').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = parseInt(btn.dataset.id, 10);
       const npc = npcs.find(npc => npc.id === id);
-      if (npc) {
-        npc.attack--;
-        if(npc.attack < 0) npc.attack = 0;
-        updateNpcList();
-        logEvent(`Decreased ${npc.name}'s Attack to ${npc.attack}`);
-      }
+      if (npc) { npc.attack--; if(npc.attack < 0) npc.attack = 0; updateNpcList(); logEvent(`Decreased ${npc.name}'s Attack to ${npc.attack}`); }
     });
   });
   // Defense
@@ -408,47 +365,29 @@ function attachNpcListeners() {
     btn.addEventListener('click', () => {
       const id = parseInt(btn.dataset.id, 10);
       const npc = npcs.find(npc => npc.id === id);
-      if (npc) {
-        npc.defense++;
-        updateNpcList();
-        logEvent(`Increased ${npc.name}'s Defense to ${npc.defense}`);
-      }
+      if (npc) { npc.defense++; updateNpcList(); logEvent(`Increased ${npc.name}'s Defense to ${npc.defense}`); }
     });
   });
   document.querySelectorAll('.decDefense').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = parseInt(btn.dataset.id, 10);
       const npc = npcs.find(npc => npc.id === id);
-      if (npc) {
-        npc.defense--;
-        if(npc.defense < 0) npc.defense = 0;
-        updateNpcList();
-        logEvent(`Decreased ${npc.name}'s Defense to ${npc.defense}`);
-      }
+      if (npc) { npc.defense--; if(npc.defense < 0) npc.defense = 0; updateNpcList(); logEvent(`Decreased ${npc.name}'s Defense to ${npc.defense}`); }
     });
   });
   // Toughness
-  document.querySelectorAll('.incToughness').forEach(btn => {
+ 	document.querySelectorAll('.incToughness').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = parseInt(btn.dataset.id, 10);
       const npc = npcs.find(npc => npc.id === id);
-      if (npc) {
-        npc.toughness++;
-        updateNpcList();
-        logEvent(`Increased ${npc.name}'s Toughness to ${npc.toughness}`);
-      }
+      if (npc) { npc.toughness++; updateNpcList(); logEvent(`Increased ${npc.name}'s Toughness to ${npc.toughness}`); }
     });
   });
   document.querySelectorAll('.decToughness').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = parseInt(btn.dataset.id, 10);
       const npc = npcs.find(npc => npc.id === id);
-      if (npc) {
-        npc.toughness--;
-        if(npc.toughness < 0) npc.toughness = 0;
-        updateNpcList();
-        logEvent(`Decreased ${npc.name}'s Toughness to ${npc.toughness}`);
-      }
+      if (npc) { npc.toughness--; if(npc.toughness < 0) npc.toughness = 0; updateNpcList(); logEvent(`Decreased ${npc.name}'s Toughness to ${npc.toughness}`); }
     });
   });
   // Speed
@@ -456,23 +395,14 @@ function attachNpcListeners() {
     btn.addEventListener('click', () => {
       const id = parseInt(btn.dataset.id, 10);
       const npc = npcs.find(npc => npc.id === id);
-      if (npc) {
-        npc.speed++;
-        updateNpcList();
-        logEvent(`Increased ${npc.name}'s Speed to ${npc.speed}`);
-      }
+      if (npc) { npc.speed++; updateNpcList(); logEvent(`Increased ${npc.name}'s Speed to ${npc.speed}`); }
     });
   });
   document.querySelectorAll('.decSpeed').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = parseInt(btn.dataset.id, 10);
       const npc = npcs.find(npc => npc.id === id);
-      if (npc) {
-        npc.speed--;
-        if(npc.speed < 0) npc.speed = 0;
-        updateNpcList();
-        logEvent(`Decreased ${npc.name}'s Speed to ${npc.speed}`);
-      }
+      if (npc) { npc.speed--; if(npc.speed < 0) npc.speed = 0; updateNpcList(); logEvent(`Decreased ${npc.name}'s Speed to ${npc.speed}`); }
     });
   });
   // Fortune
@@ -480,23 +410,14 @@ function attachNpcListeners() {
     btn.addEventListener('click', () => {
       const id = parseInt(btn.dataset.id, 10);
       const npc = npcs.find(npc => npc.id === id);
-      if (npc) {
-        npc.fortune = (npc.fortune || 0) + 1;
-        updateNpcList();
-        logEvent(`Increased ${npc.name}'s Fortune to ${npc.fortune}`);
-      }
+      if (npc) { npc.fortune = (npc.fortune || 0) + 1; updateNpcList(); logEvent(`Increased ${npc.name}'s Fortune to ${npc.fortune}`); }
     });
   });
   document.querySelectorAll('.decFortune').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = parseInt(btn.dataset.id, 10);
       const npc = npcs.find(npc => npc.id === id);
-      if (npc) {
-        npc.fortune = (npc.fortune || 0) - 1;
-        if(npc.fortune < 0) npc.fortune = 0;
-        updateNpcList();
-        logEvent(`Decreased ${npc.name}'s Fortune to ${npc.fortune}`);
-      }
+      if (npc) { npc.fortune = (npc.fortune || 0) - 1; if(npc.fortune < 0) npc.fortune = 0; updateNpcList(); logEvent(`Decreased ${npc.name}'s Fortune to ${npc.fortune}`); }
     });
   });
   // Wound Points (for non-mook NPCs)
@@ -504,50 +425,32 @@ function attachNpcListeners() {
     btn.addEventListener('click', () => {
       const id = parseInt(btn.dataset.id, 10);
       const npc = npcs.find(npc => npc.id === id);
-      if (npc && npc.type !== "mook") {
-        npc.woundPoints++;
-        updateNpcList();
-        logEvent(`Increased ${npc.name}'s Wound Points to ${npc.woundPoints}`);
-      }
+      if (npc && npc.type !== "mook") { npc.woundPoints++; updateNpcList(); logEvent(`Increased ${npc.name}'s Wound Points to ${npc.woundPoints}`); }
     });
   });
   document.querySelectorAll('.decWound').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = parseInt(btn.dataset.id, 10);
       const npc = npcs.find(npc => npc.id === id);
-      if (npc && npc.type !== "mook") {
-        npc.woundPoints--;
-        if(npc.woundPoints < 0) npc.woundPoints = 0;
-        updateNpcList();
-        logEvent(`Decreased ${npc.name}'s Wound Points to ${npc.woundPoints}`);
-      }
+      if (npc && npc.type !== "mook") { npc.woundPoints--; if(npc.woundPoints < 0) npc.woundPoints = 0; updateNpcList(); logEvent(`Decreased ${npc.name}'s Wound Points to ${npc.woundPoints}`); }
     });
   });
-  // Mook count adjustments
+  // For mooks, adjust count.
   document.querySelectorAll('.incMook').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = parseInt(btn.dataset.id, 10);
       const npc = npcs.find(npc => npc.id === id);
-      if (npc && npc.type === "mook") {
-        npc.count++;
-        updateNpcList();
-        logEvent(`Increased ${npc.name}'s Mook Count to ${npc.count}`);
-      }
+      if (npc && npc.type === "mook") { npc.count++; updateNpcList(); logEvent(`Increased ${npc.name}'s Mook Count to ${npc.count}`); }
     });
   });
   document.querySelectorAll('.decMook').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = parseInt(btn.dataset.id, 10);
       const npc = npcs.find(npc => npc.id === id);
-      if (npc && npc.type === "mook") {
-        npc.count--;
-        if(npc.count < 0) npc.count = 0;
-        updateNpcList();
-        logEvent(`Decreased ${npc.name}'s Mook Count to ${npc.count}`);
-      }
+      if (npc && npc.type === "mook") { npc.count--; if(npc.count < 0) npc.count = 0; updateNpcList(); logEvent(`Decreased ${npc.name}'s Mook Count to ${npc.count}`); }
     });
   });
-  // Remove enemy button
+  // Remove enemy button.
   document.querySelectorAll('.removeEnemy').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = parseInt(btn.dataset.id, 10);
@@ -602,12 +505,58 @@ function updateAttackDropdowns() {
   });
 }
 
-// ------------------- Event Log Helper -------------------
-function logEvent(message) {
-  const li = document.createElement('li');
-  li.textContent = message;
-  logList.appendChild(li);
-}
+// ------------------- Event Listeners for Add Enemy Form -------------------
+addEnemyForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const name = enemyNameInput.value.trim();
+  let type = enemyTypeSelect.value;
+  let attack = parseInt(enemyAttackInput.value, 10) || 0;
+  let defense = parseInt(enemyDefenseInput.value, 10) || 0;
+  let toughness = parseInt(enemyToughnessInput.value, 10) || 0;
+  let speed = parseInt(enemySpeedInput.value, 10) || 0;
+  
+  // If enemy type is "featured" and a template is selected, override stats.
+  if(type === "featured" && featuredTemplateSelect.value) {
+    const template = featuredTemplates[featuredTemplateSelect.value];
+    attack = template.attack;
+    defense = template.defense;
+    toughness = template.toughness;
+    speed = template.speed;
+  }
+  
+  let enemy = { id: getNextNpcId(), name, type, attack, defense, toughness, speed };
+  
+  if (type === "mook") {
+    enemy.count = parseInt(mookCountInput.value, 10) || 1;
+  } else {
+    enemy.woundPoints = 0;
+    enemy.attackImpair = 0;
+    enemy.defenseImpair = 0;
+  }
+  
+  npcs.push(enemy);
+  updateAttackDropdowns();
+  updateNpcList();
+  addEnemyForm.reset();
+  mookCountContainer.style.display = "none";
+  featuredTemplateContainer.style.display = "none";
+  logEvent(`Added enemy: ${name} (${type})`);
+});
+
+// Show/hide additional fields based on enemy type.
+enemyTypeSelect.addEventListener('change', (e) => {
+  const selected = e.target.value;
+  if(selected === "mook") {
+    mookCountContainer.style.display = "block";
+    featuredTemplateContainer.style.display = "none";
+  } else if(selected === "featured") {
+    featuredTemplateContainer.style.display = "block";
+    mookCountContainer.style.display = "none";
+  } else {
+    mookCountContainer.style.display = "none";
+    featuredTemplateContainer.style.display = "none";
+  }
+});
 
 // ------------------- Attack Actions -------------------
 
@@ -620,7 +569,6 @@ playerActionForm.addEventListener('submit', (e) => {
   const target = npcs.find(npc => npc.id === targetId);
   if(!attacker || !target) return;
   
-  // For player attacks, final result = (entered roll + modifier)
   let rollResult = parseInt(playerRollResultInput.value.replace('!', ''), 10);
   const modifier = parseInt(playerModifierInput.value, 10) || 0;
   rollResult += modifier;
@@ -645,7 +593,7 @@ playerActionForm.addEventListener('submit', (e) => {
     }
   } else {
     target.woundPoints += damage;
-    // Apply impairment thresholds.
+    // Apply impairment thresholds for Featured foes.
     if(target.type === "featured") {
       if(target.woundPoints >= 30) {
         target.attackImpair = 2;
